@@ -9,7 +9,6 @@ namespace Cw10_WebApplication1.Models
         public s16446Context()
         {
         }
-
         public s16446Context(DbContextOptions<s16446Context> options)
             : base(options)
         {

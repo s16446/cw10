@@ -7,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Cw10_WebApplication1
+namespace WebApplication1
 {
 	public class Program
 	{

@@ -10,8 +10,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using WebApplication1.DAL;
+using WebApplication1.Services;
 
-namespace Cw10_WebApplication1
+namespace WebApplication1
 {
 	public class Startup
 	{
@@ -26,7 +28,10 @@ namespace Cw10_WebApplication1
 		public void ConfigureServices(IServiceCollection services)
 		{
 			var configurationSection = Configuration.GetSection("ConnectionStrings:s16446Database");
-			services.AddDbContext<Models.s16446Context>(options => options.UseSqlServer(configurationSection.Value));
+			services.AddTransient<IStudentDbService, SqlServerStudentDbService>();
+            services.AddSingleton<IDbService, MockDbService>(); 
+
+			//services.AddDbContext<Models.s16446Context>(options => options.UseSqlServer(configurationSection.Value));
 			services.AddControllers();
 		}
 
