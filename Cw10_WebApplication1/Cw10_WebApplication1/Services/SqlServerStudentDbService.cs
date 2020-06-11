@@ -1,186 +1,114 @@
-﻿
+﻿using Cw10_WebApplication1.Models;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
-using System.Threading.Tasks;
 using WebApplication1.DTOs.Requests;
 using WebApplication1.DTOs.Responses;
-using WebApplication1.Services;
-
 
 namespace WebApplication1.Services
 {
-    public class SqlServerStudentDbService : IStudentDbService
+	public class SqlServerStudentDbService : IStudentDbService
     {
-        private const string CONN_STR = "Data Source=db-mssql;Initial Catalog=s16446;Integrated Security=True";
+        private readonly s16446Context _context;
+
+        public SqlServerStudentDbService(s16446Context context)
+        {
+           _context = context;
+        }
         public EnrollStudentResponse EnrollStudent(EnrollStudentRequest request)
         {
             var response = new EnrollStudentResponse();
-            //response.setStatus(400, "Unknown Error"); // domyślnie - błąd
-            //_ = new Student
-            //{
-            //    FirstName = request.FirstName,
-            //    LastName = request.LastName,
-            //    IndexNumber = request.IndexNumber,
-            //};
+            response.setStatus(400, "Unknown Error"); // domyślnie - błąd
 
-            //using (var connection = new SqlConnection(CONN_STR))
-            //{ 
-            //    connection.Open();
-            //    var command = connection.CreateCommand();
-            //    var transaction = connection.BeginTransaction();
-                
-            //    command.Connection = connection;
-            //    command.Transaction = transaction;
-            //try
-            //{
-            //    command.CommandText = "select IdStudy, Name from dbo.Studies where name = @studies;";
-            //    command.Parameters.AddWithValue("studies", request.Studies);
-            //    var reader = command.ExecuteReader();
-            //    if (!reader.Read())
-            //    {
-            //        reader.Close();
-            //        response.setStatus(400, "ERROR: Nie istnieją studia przekazane przez klienta");
-            //    }
-            //    else
-            //    {
-            //        int idStudy = int.Parse(reader["IdStudy"].ToString());
-            //        string studiesName = reader["Name"].ToString();
-            //        reader.Close();
+            var _studies = _context.Studies.Where(p => p.Name == request.Studies).FirstOrDefault();
+            if (_studies == null) {
+               response.setStatus(400, "ERROR: Nie istnieją studia przekazane przez klienta");
+               return response;
+            }
 
-            //        command.CommandText = "SELECT TOP 1 IdEnrollment, StartDate " +
-            //        " FROM dbo.Enrollment e " +
-            //        " INNER JOIN dbo.Studies s ON e.IdStudy = s.IdStudy and Semester = 1 " +
-            //        " WHERE s.name = @studies " +
-            //        " ORDER BY StartDate DESC;";
+            var _enrollment = _context.Enrollment.Where(e => e.IdStudy ==_studies.IdStudy && e.Semester == 1).FirstOrDefault();
+            if (_enrollment == null) {
+                _enrollment = new Enrollment() {
+                        IdEnrollment = _context.Enrollment.Max(p => p.IdEnrollment) + 1,
+                        Semester = 1, 
+                        IdStudy = _studies.IdStudy,
+                        StartDate = DateTime.Now.Date
+                 };
+                _context.Enrollment.Add(_enrollment);
+                _context.SaveChanges();
+             }
 
-            //        DateTime enrollmentDate = DateTime.Now.Date;
-            //        reader = command.ExecuteReader();
+             var _student = _context.Student.Where(p => p.IndexNumber == request.IndexNumber).FirstOrDefault();
+             if (_student == null) {
+                DateTime dateValue;
+		        DateTime.TryParseExact(request.BirthDate, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out dateValue);
 
-            //        int nextEnrollment;
-            //        if (!reader.Read())
-            //        {
-            //            reader.Close();
-            //            command.CommandText = "SELECT ISNULL(MAX(IdEnrollment), 0) as id FROM dbo.Enrollment";
-            //            reader = command.ExecuteReader();
-            //            if (!reader.Read())
-            //                nextEnrollment = 1;
-            //            else
-            //                nextEnrollment = int.Parse(reader["id"].ToString()) + 1;
-            //            reader.Close();
+			    _student = new Student {
+			        IndexNumber = request.IndexNumber,
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    BirthDate = dateValue,
+                    IdEnrollment = _enrollment.IdEnrollment
+			    };
+                _context.Student.Add(_student);
+                _context.SaveChanges();
+                response.setStatus(201, "Student został poprawnie zapisany na semestr"); // student został poprawnie zapisany na semestr                                                
+             }
+             else {
+                response.setStatus(400, "Taki student już istnieje");
+             }
+             response.LastName = _student.LastName;
+             response.Semester = _enrollment.Semester;
+             response.StartDate = _enrollment.StartDate.ToString();
+             response.Studies = request.Studies;
 
-            //            command.CommandText = "INSERT INTO dbo.Enrollment(IdEnrollment, Semester, IdStudy, StartDate) " +
-            //                "VALUES( " + nextEnrollment + ", 1, " + idStudy + ", '" + enrollmentDate.ToString("yyyy-MM-dd") + "');";
-            //            command.ExecuteNonQuery();
-            //        }
-            //        else
-            //        {
-            //            nextEnrollment = int.Parse(reader["IdEnrollment"].ToString());
-            //            enrollmentDate = DateTime.ParseExact(reader["StartDate"].ToString().Substring(0,10), "yyyy-MM-dd", CultureInfo.InvariantCulture);
-            //        }
-            //        ;
-            //        reader.Close();
-
-            //        command.CommandText = "SELECT IndexNumber FROM dbo.Student s WHERE IndexNumber = @IndexNumber;";
-            //        command.Parameters.AddWithValue("IndexNumber", request.IndexNumber);
-            //        reader = command.ExecuteReader();
-            //        if (reader.Read()) 
-            //        {
-            //            reader.Close();
-            //            transaction.Rollback();
-            //            response.setStatus(400, "ERROR: Numer indeksu studenta nie jest unikalny"); // nr indeksu studenta nie jest unikalny
-            //        }
-            //        else 
-            //        {
-            //            reader.Close();
-            //            DateTime BirthDateNew;
-            //            if (DateTime.TryParseExact(request.BirthDate, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out BirthDateNew))
-            //            {
-
-            //                command.CommandText = "INSERT INTO dbo.Student(IndexNumber, FirstName, LastName, BirthDate, IdEnrollment)" +
-            //                    "VALUES(@IndexNumber, @FirstName, @LastName, @BirthDate, @IdEnrollment);";
-            //                command.Parameters.AddWithValue("FirstName", request.FirstName);
-            //                command.Parameters.AddWithValue("LastName", request.LastName);
-            //                command.Parameters.AddWithValue("BirthDate", BirthDateNew);
-            //                command.Parameters.AddWithValue("IdEnrollment", nextEnrollment);
-            //                command.ExecuteNonQuery();
-            //                reader.Close();
-            //                transaction.Commit();
-                        
-            //                response.LastName = request.LastName;
-            //                response.Semester = 1;
-            //                response.Studies = studiesName;
-            //                response.StartDate = enrollmentDate.ToString("dd.MM.yyyy");
-            //                response.setStatus(201, "Student został poprawnie zapisany na semestr"); // student został poprawnie zapisany na semestr                           
-            //            }
-            //            else 
-            //            {
-            //                reader.Close();
-            //                transaction.Rollback();
-            //                response.setStatus(400, "ERROR: Błędna data urodzenia"); // nr indeksu studenta nie jest unikalny
-            //            }
-            //        }
-            //    };
-            //}
-            //catch (SqlException e)
-            //{
-            //   Console.WriteLine("An exception of type " + e.GetType());
-            //   transaction.Rollback();
-            //}
-            return response;
+             return response;
         }
 
         public PromoteStudentsResponse PromoteStudents(PromoteStudentsRequest request)
         {
             var response = new PromoteStudentsResponse();
-            //response.setStatus(400, "Unknown Error"); // domyślnie - błąd
+            response.setStatus(400, "Unknown Error"); // domyślnie - błąd
 
-            //using (var connection = new SqlConnection(CONN_STR))
-            //{ 
-            //    connection.Open();
-            //    var command = connection.CreateCommand();
-            //    var transaction = connection.BeginTransaction();
-                
-            //    command.Connection = connection;
-            //    command.Transaction = transaction;
+            var _studies = _context.Studies.Where( s => s.Name == request.Studies).FirstOrDefault();
+            if (_studies == null) {
+                response.setStatus(404, "ERROR: nie znaleziono studiów");
+                return response;
+            };
 
-            //    command.CommandText = "select e.IdEnrollment from dbo.Enrollment e inner join dbo.Studies s on e.IdStudy = s.IdStudy where s.Name = @studyName and e.Semester = @semesterNumber";
-            //    command.Parameters.AddWithValue("studyName", request.Studies);
-            //    command.Parameters.AddWithValue("semesterNumber", request.Semester);
-                
-            //    var reader = command.ExecuteReader();
-            //    if (!reader.Read()) {
-            //        reader.Close();
-            //        response.setStatus(404, "ERROR: nie znaleziono semestru i/lub studiów");
-            //        transaction.Rollback();
-            //    }
-            //    else
-            //    { 
-            //        reader.Close();
-                    
+            var _enrollment = _context.Enrollment
+                .Where(a => a.IdStudy == _studies.IdStudy && a.Semester == request.Semester)
+                .OrderByDescending(s => s.StartDate).FirstOrDefault();
 
-            //        using (SqlConnection conn = new SqlConnection(CONN_STR)) 
-            //        {
-            //            conn.Open();
-            //            SqlCommand cmd  = new SqlCommand("Promote", conn);
-            //            cmd.CommandType = CommandType.StoredProcedure;
+            if (_enrollment == null) {
+                response.setStatus(404, "ERROR: nie znaleziono semestru i studiów");
+                return response;
+            };
+            Console.WriteLine("tutaj:" + _enrollment.IdEnrollment);
+            var _enrollment_next = _context.Enrollment.Where(p => p.Semester == _enrollment.Semester + 1).FirstOrDefault();
+            if  (_enrollment_next == null) {
+                _enrollment_next = new Enrollment(){
+                        IdEnrollment = _context.Enrollment.Max(p => p.IdEnrollment) + 1,
+                        Semester = _enrollment.Semester + 1, 
+                        IdStudy = _enrollment.IdStudy,
+                        StartDate = DateTime.Now.Date
+                };
+                _context.Add(_enrollment_next);
+                _context.SaveChanges();
+            }
 
-            //            cmd.Parameters.Add(new SqlParameter("@studies", request.Studies));
-            //            cmd.Parameters.Add(new SqlParameter("@semester", request.Semester));
-            //            cmd.ExecuteReader();
-            //            conn.Close();
-            //        }
-            //    response.Semester = request.Semester + 1;
-            //    response.StartDate = DateTime.Now.ToString("dd.MM.yyyy");
-            //    response.StudiesName = request.Studies;
-
-            //    transaction.Commit();     
-            //    response.setStatus(201, "Studenci zostali promowani na następny semestr");
-            //    }
-            //}
+            var _students = _context.Student.Where(s => s.IdEnrollment == _enrollment.IdEnrollment);
+           
+            foreach (var s in _students) {
+                s.IdEnrollment = _enrollment_next.IdEnrollment;
+            }
+            _context.SaveChanges();
+            response.Semester = _enrollment_next.Semester;
+            response.StartDate = _enrollment_next.StartDate.ToString();
+            response.StudiesName = _studies.Name;
+            response.setStatus(201, "Studenci zostali promowani na następny semestr");
             return response;
         }
 

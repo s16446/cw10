@@ -6,15 +6,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using WebApplication1.DAL;
 
-
 namespace WebApplication1.Controllers
 {
     [ApiController]
     [Route("api/students")]
     public class StudentsController : ControllerBase
     {
-        private IConfiguration  Configuration { get; set; }
-
+        private IConfiguration Configuration { get; set; }
         private IDbService _dbService;
 
         public StudentsController(IDbService dbService, IConfiguration configuration)
@@ -24,8 +22,10 @@ namespace WebApplication1.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetStudents(){
-            return Ok(_dbService.GetStudents().ToList());
+        public IActionResult GetStudents()
+        {
+            //return Ok();
+            return Ok(_dbService.GetStudents());
         }
 
         [HttpGet("{id}")]
@@ -43,30 +43,36 @@ namespace WebApplication1.Controllers
         [HttpPost] // add
         public IActionResult CreateStudent(Student student)
         {
-            _dbService.AddStudent(student);
-            return Ok(student);
+            if (_dbService.AddStudent(student))
+                return Ok(student);
+            else
+                return BadRequest("Student już istnieje " + student.IndexNumber);
         }
 
         [HttpPut("{id}")] // update
         public IActionResult UpdateStudent(string id)
         {
-            return Ok("Aktualizacja zakonczona: " + id);
+            
+            if (_dbService.UpdateStudent(id))
+                return Ok("Aktualizacja zakończona: " + id);
+            else
+                return NotFound("Nie znaleziono studenta o indeksie: " + id);
         }
 
         [HttpDelete("{id}")] // delete
         public IActionResult DeleteStudent(string id)
         {
-            Student student = _dbService.FindStudent(id);
+            var student = _dbService.GetStudents().Where(s => s.IndexNumber == id).FirstOrDefault();
             if (student != null) 
             {
                 _dbService.DeleteStudent(student);
-                return Ok("Usuwanie zakonczone" + id);
+                return Ok("Usuwanie zakonczone: " + id);
             }
-        else
-            return NotFound("Nie znaleziono studenta o indeksie: " + id);
+            else
+            {
+                return NotFound("Nie znaleziono studenta o indeksie: " + id);
+            }
         }
-
-       
 
     }
 }

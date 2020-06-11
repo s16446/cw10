@@ -9,15 +9,15 @@ namespace WebApplication1.DAL
     {
         IEnumerable<Student> GetStudents();
         
-        void AddStudent(Student student);
+        Boolean AddStudent(Student student);
 
-        void DeleteStudent(Student student);
+        Boolean UpdateStudent(String id);
 
-        Student FindStudent(string index);
+        Boolean DeleteStudent(Student student);
 
         IEnumerable<Student> GetStudent(string id);
 
         IEnumerable<Enrollment> GetEnrollments(string id, int semester);
 
-    }
+	}
 }
